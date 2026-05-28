@@ -247,7 +247,17 @@ async def generate_report(
         logger.exception("Claude returned a payload that failed Pydantic validation")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Claude returned invalid structure",
+            detail=f"Claude returned invalid structure: {exc.error_count()} validation errors",
+        ) from exc
+    except RuntimeError as exc:
+        # Extractor raises this when Claude didn't call the generate_report tool
+        # or returned a non-dict tool input. This means the model responded
+        # conversationally instead of using the forced tool — usually a sign
+        # of bad input (empty transcript, unusable content) or model confusion.
+        logger.exception("Claude did not return a valid tool_use response")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Claude did not return structured output: {exc}",
         ) from exc
     except anthropic.RateLimitError as exc:
         logger.error("Anthropic rate limit reached after retries: %s", exc)
@@ -263,11 +273,32 @@ async def generate_report(
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Claude API error: {exc}",
+            detail=f"Claude API error ({getattr(exc, 'status_code', '?')}): {exc}",
+        ) from exc
+    except anthropic.APIConnectionError as exc:
+        logger.error("Anthropic connection error: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Cannot reach Claude API: {exc}",
+        ) from exc
+    except anthropic.APIError as exc:
+        # Catch-all for any other Anthropic SDK error not handled above.
+        logger.exception("Unexpected Anthropic SDK error")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Claude API unexpected error: {exc}",
         ) from exc
 
-    # Render PDF — any failure here is a server bug, let the global handler log it.
-    pdf_bytes = generate_pdf(report)
+    # Render PDF — wrap so rendering failures surface as 500 with a real reason
+    # instead of an opaque "Internal server error".
+    try:
+        pdf_bytes = generate_pdf(report)
+    except Exception as exc:
+        logger.exception("PDF generation failed for report: %s", report.meeting_title)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PDF generation failed: {type(exc).__name__}: {exc}",
+        ) from exc
 
     filename = f"{_slugify(report.meeting_title)}.pdf"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
