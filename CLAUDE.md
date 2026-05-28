@@ -16,7 +16,7 @@ Internal tool: 3 docs in (my context .MD + client context .MD + transcript) → 
 - PDF: ReportLab
 - Parsers: pypdf + python-docx + csv (stdlib)
 - Hosting: Railway (2 services)
-- LLM: claude-sonnet-4-20250514
+- LLM: claude-sonnet-4-6
 
 ## Folder Structure
 backend/  → FastAPI app

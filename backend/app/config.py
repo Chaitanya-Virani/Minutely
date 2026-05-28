@@ -28,7 +28,7 @@ class Settings(BaseSettings):
         description="Secret API key for the Anthropic Claude API.",
     )
     CLAUDE_MODEL: str = Field(
-        default="claude-sonnet-4-20250514",
+        default="claude-sonnet-4-6",
         description="Anthropic model identifier used for report generation.",
     )
     MAX_FILE_SIZE_MB: int = Field(

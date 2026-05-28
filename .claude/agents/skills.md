@@ -16,7 +16,7 @@
 
 ## Anthropic SDK (Python) — CRITICAL PATTERNS
 - Use AsyncAnthropic client, initialize ONCE as module singleton
-- Model: claude-sonnet-4-20250514 (1M context window, GA)
+- Model: claude-sonnet-4-6 (200K context window, GA with extended support)
 - tool_use for structured output — NEVER ask for raw JSON in prose
 - Tool definition: name, description, input_schema (JSON schema matching Pydantic)
 - Force tool use: tool_choice={"type": "tool", "name": "generate_report"}
