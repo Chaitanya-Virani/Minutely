@@ -1,20 +1,10 @@
 /**
  * Client for the Minutely report-generation endpoint.
  *
- * Posts three files as multipart form-data and expects an
- * `application/pdf` blob back. Filename is pulled from the
- * `Content-Disposition` header when present.
- *
- * Calls the backend directly (bypassing the Next.js dev rewrite)
- * because Next's dev proxy doesn't reliably handle long-running
- * multipart uploads — it can time out or buffer the response
- * incorrectly, producing an opaque 500 "Internal Server Error".
- * CORS is enabled on the backend for the configured origins.
+ * Posts three files as multipart form-data to the local Next.js API route
+ * at /api/generate-report, which proxies to the backend server-side.
+ * This avoids CORS entirely and keeps BACKEND_URL out of the browser bundle.
  */
-
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-).replace(/\/$/, "");
 
 export interface ReportFiles {
   my_context: File;
@@ -58,7 +48,7 @@ export async function generateReport(files: ReportFiles): Promise<ReportResult> 
   fd.append("client_context", files.client_context);
   fd.append("transcript", files.transcript);
 
-  const response = await fetch(`${API_BASE}/api/v1/generate-report`, {
+  const response = await fetch(`/api/generate-report`, {
     method: "POST",
     body: fd,
   });
