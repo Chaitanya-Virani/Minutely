@@ -6,3 +6,6 @@ python-docx
 pypdf
 python-multipart
 pydantic-settings
+python-dotenv
+httpx
+tenacity

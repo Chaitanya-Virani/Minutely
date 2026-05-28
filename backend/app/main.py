@@ -15,6 +15,7 @@ Wires together:
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -74,9 +75,16 @@ app: FastAPI = FastAPI(
 # Middleware
 # ---------------------------------------------------------------------------
 
+_allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+_cors_origins = (
+    [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
+    if _allowed_origins_env
+    else settings.CORS_ORIGINS
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,6 +96,12 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.get("/health", tags=["health"])
+async def health_check() -> dict[str, str]:
+    """Top-level health probe used by Railway's healthcheck."""
+    return {"status": "ok", "service": "minutely-backend"}
 
 
 @app.get("/", tags=["meta"])
