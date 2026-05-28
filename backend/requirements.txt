@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+anthropic
+reportlab
+python-docx
+pypdf
+python-multipart
+pydantic-settings

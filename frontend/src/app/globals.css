@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent-indigo: #6366f1;
+  --accent-teal: #14b8a6;
+  --accent-amber: #f59e0b;
+  --gradient-hero: radial-gradient(
+      ellipse at top,
+      rgba(99, 102, 241, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(ellipse at bottom right, rgba(20, 184, 166, 0.12), transparent 50%),
+    radial-gradient(ellipse at bottom left, rgba(245, 158, 11, 0.1), transparent 50%);
+}
+
+html,
+body {
+  background-color: #09090b;
+}
+
+body {
+  background-image: var(--gradient-hero);
+  background-attachment: fixed;
+}
+
+/* Custom scrollbar tuned for dark UI */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #18181b;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
