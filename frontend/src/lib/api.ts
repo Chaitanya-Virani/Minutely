@@ -4,7 +4,17 @@
  * Posts three files as multipart form-data and expects an
  * `application/pdf` blob back. Filename is pulled from the
  * `Content-Disposition` header when present.
+ *
+ * Calls the backend directly (bypassing the Next.js dev rewrite)
+ * because Next's dev proxy doesn't reliably handle long-running
+ * multipart uploads — it can time out or buffer the response
+ * incorrectly, producing an opaque 500 "Internal Server Error".
+ * CORS is enabled on the backend for the configured origins.
  */
+
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+).replace(/\/$/, "");
 
 export interface ReportFiles {
   my_context: File;
@@ -48,15 +58,28 @@ export async function generateReport(files: ReportFiles): Promise<ReportResult> 
   fd.append("client_context", files.client_context);
   fd.append("transcript", files.transcript);
 
-  const response = await fetch("/api/v1/generate-report", {
+  const response = await fetch(`${API_BASE}/api/v1/generate-report`, {
     method: "POST",
     body: fd,
   });
 
   if (!response.ok) {
+    // Try to surface the backend's JSON detail (e.g. {"detail": "..."}); if
+    // that fails or the body is plain text, fall back to the raw text. This
+    // produces a much more useful error than the bare HTTP reason phrase.
     let detail = "";
     try {
-      detail = await response.text();
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json()) as { detail?: unknown };
+        if (typeof payload.detail === "string") {
+          detail = payload.detail;
+        } else if (payload.detail !== undefined) {
+          detail = JSON.stringify(payload.detail);
+        }
+      } else {
+        detail = await response.text();
+      }
     } catch {
       detail = "";
     }
