@@ -1,0 +1,41 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Meeting Intelligence
+      - heading "Three documents in. One sharp report out." [level=1] [ref=e6]:
+        - text: Three documents in.
+        - text: One sharp report out.
+      - paragraph [ref=e7]: Drop in your own context, the client's context, and the raw meeting transcript. Minutely sends the lot to Claude in a single pass and gives you back a polished PDF you can actually use.
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]: My Context
+          - button "my_context.md 77 B Remove file" [active] [ref=e52] [cursor=pointer]:
+            - generic [ref=e14]:
+              - img [ref=e53]
+              - paragraph [ref=e19]: my_context.md
+              - paragraph [ref=e20]: 77 B
+              - button "Remove file" [ref=e56]:
+                - img [ref=e57]
+                - text: Clear
+        - generic [ref=e22]:
+          - generic [ref=e23]: Client Context
+          - button "Drop file or click to browse Background on the client, their team, and prior history. .md" [ref=e25] [cursor=pointer]:
+            - generic [ref=e26]:
+              - img [ref=e28]
+              - paragraph [ref=e31]: Drop file or click to browse
+              - paragraph [ref=e32]: Background on the client, their team, and prior history.
+              - paragraph [ref=e33]: .md
+        - generic [ref=e34]:
+          - generic [ref=e35]: Meeting Transcript
+          - button "Drop file or click to browse Raw transcript export from your call. .csv · .txt · .pdf · .docx · .md" [ref=e37] [cursor=pointer]:
+            - generic [ref=e38]:
+              - img [ref=e40]
+              - paragraph [ref=e43]: Drop file or click to browse
+              - paragraph [ref=e44]: Raw transcript export from your call.
+              - paragraph [ref=e45]: .csv · .txt · .pdf · .docx · .md
+      - button "Generate Report" [disabled] [ref=e47]:
+        - img [ref=e48]
+        - text: Generate Report
+    - generic [ref=e50]: Internal tool. Stateless pipeline. Documents are never persisted.
+  - alert [ref=e51]

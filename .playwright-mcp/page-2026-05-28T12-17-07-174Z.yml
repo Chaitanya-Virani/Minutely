@@ -1,0 +1,45 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Meeting Intelligence
+      - heading "Three documents in. One sharp report out." [level=1] [ref=e6]:
+        - text: Three documents in.
+        - text: One sharp report out.
+      - paragraph [ref=e7]: Drop in your own context, the client's context, and the raw meeting transcript. Minutely sends the lot to Claude in a single pass and gives you back a polished PDF you can actually use.
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]: My Context
+          - button "my_context.md 77 B Remove file" [ref=e52] [cursor=pointer]:
+            - generic [ref=e14]:
+              - img [ref=e53]
+              - paragraph [ref=e19]: my_context.md
+              - paragraph [ref=e20]: 77 B
+              - button "Remove file" [ref=e56]:
+                - img [ref=e57]
+                - text: Clear
+        - generic [ref=e22]:
+          - generic [ref=e23]: Client Context
+          - button "client_context.md 73 B Remove file" [ref=e60] [cursor=pointer]:
+            - generic [ref=e26]:
+              - img [ref=e61]
+              - paragraph [ref=e31]: client_context.md
+              - paragraph [ref=e32]: 73 B
+              - button "Remove file" [ref=e64]:
+                - img [ref=e65]
+                - text: Clear
+        - generic [ref=e34]:
+          - generic [ref=e35]: Meeting Transcript
+          - button "transcript.txt 249 B Remove file" [active] [ref=e68] [cursor=pointer]:
+            - generic [ref=e38]:
+              - img [ref=e69]
+              - paragraph [ref=e43]: transcript.txt
+              - paragraph [ref=e44]: 249 B
+              - button "Remove file" [ref=e72]:
+                - img [ref=e73]
+                - text: Clear
+      - button "Generate Report" [ref=e47] [cursor=pointer]:
+        - img [ref=e48]
+        - text: Generate Report
+    - generic [ref=e50]: Internal tool. Stateless pipeline. Documents are never persisted.
+  - alert [ref=e51]
