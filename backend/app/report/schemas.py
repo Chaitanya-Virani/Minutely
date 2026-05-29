@@ -1,8 +1,8 @@
 """Pydantic v2 models powering both the Anthropic tool_use input schema and the ReportLab PDF builder input — rename a field here and both downstream consumers must follow."""
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 __all__ = [
     "ActionItem",
@@ -122,6 +122,20 @@ class MeetingReport(BaseModel):
         default_factory=list,
         description="Risks, blockers, open concerns, or unresolved dependencies raised during the meeting, each as a short sentence.",
     )
+
+    @field_validator("risks_and_blockers", mode="before")
+    @classmethod
+    def _coerce_risks(cls, value: Any) -> Any:
+        if not isinstance(value, list):
+            return value
+        coerced: list[Any] = []
+        for item in value:
+            if isinstance(item, dict) and item:
+                coerced.append(next(iter(item.values())))
+            else:
+                coerced.append(item)
+        return coerced
+
     follow_up_meetings: list[str] = Field(
         default_factory=list,
         description="Follow-up meetings or syncs that were proposed or scheduled, each as a short descriptive phrase including timing if known.",
