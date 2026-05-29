@@ -140,3 +140,22 @@ class MeetingReport(BaseModel):
         default_factory=list,
         description="Follow-up meetings or syncs that were proposed or scheduled, each as a short descriptive phrase including timing if known.",
     )
+
+    @field_validator("follow_up_meetings", mode="before")
+    @classmethod
+    def _coerce_follow_ups(cls, value: Any) -> Any:
+        if not isinstance(value, list):
+            return value
+        coerced: list[Any] = []
+        for item in value:
+            if isinstance(item, str):
+                coerced.append(item)
+            elif isinstance(item, dict):
+                extracted = (
+                    item.get("description")
+                    or item.get("text")
+                    or (next(iter(item.values()), None) if item else None)
+                )
+                if extracted:
+                    coerced.append(extracted)
+        return coerced
