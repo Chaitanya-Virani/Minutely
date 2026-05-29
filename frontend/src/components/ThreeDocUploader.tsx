@@ -10,8 +10,12 @@ import {
   ProcessingSteps,
   type ProcessingStage,
 } from "@/components/ProcessingSteps";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { UploadZone, type AccentName } from "@/components/UploadZone";
 import { generateReport } from "@/lib/api";
+import { fetchGenerationConfig, type ModelOption } from "@/lib/config";
+
+const SYSTEM_PROMPT_STORAGE_KEY = "minutely.systemPrompt";
 
 type Step = "idle" | "uploading" | "processing" | "done" | "error";
 
@@ -68,6 +72,12 @@ export function ThreeDocUploader(): JSX.Element {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [systemPrompt, setSystemPrompt] = useState<string>("");
+  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState<string>("");
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+
   const stageTimers = useRef<number[]>([]);
 
   const clearStageTimers = useCallback(() => {
@@ -83,6 +93,47 @@ export function ThreeDocUploader(): JSX.Element {
     };
   }, [clearStageTimers]);
 
+  // Load model list + default system prompt once on mount, then apply any
+  // locally-persisted custom prompt. localStorage is read ONLY here (never
+  // during render) to stay SSR-hydration safe.
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const config = await fetchGenerationConfig();
+        if (cancelled) return;
+
+        setModels(config.models);
+        setSelectedModel(config.default_model);
+        setDefaultSystemPrompt(config.default_system_prompt);
+
+        let stored: string | null = null;
+        try {
+          stored = window.localStorage.getItem(SYSTEM_PROMPT_STORAGE_KEY);
+        } catch {
+          stored = null;
+        }
+        if (stored !== null && stored.trim().length > 0) {
+          setSystemPrompt(stored);
+        } else {
+          setSystemPrompt(config.default_system_prompt);
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Could not load generation settings.";
+        setSettingsError(message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const allFilled = useMemo<boolean>(
     () =>
       slots.my_context !== null &&
@@ -92,6 +143,22 @@ export function ThreeDocUploader(): JSX.Element {
   );
 
   const isBusy = step === "uploading" || step === "processing";
+
+  const isCustomized = useMemo<boolean>(
+    () =>
+      systemPrompt.trim() !== defaultSystemPrompt.trim() &&
+      systemPrompt.trim().length > 0,
+    [systemPrompt, defaultSystemPrompt],
+  );
+
+  const onResetSystemPrompt = useCallback(() => {
+    setSystemPrompt(defaultSystemPrompt);
+    try {
+      window.localStorage.removeItem(SYSTEM_PROMPT_STORAGE_KEY);
+    } catch {
+      /* storage unavailable — non-fatal */
+    }
+  }, [defaultSystemPrompt]);
 
   const onSlotChange = useCallback(
     (key: SlotConfig["key"]) => (file: File | null) => {
@@ -137,11 +204,24 @@ export function ThreeDocUploader(): JSX.Element {
       }, 12000),
     );
 
+    // Persist the prompt: keep custom prompts for next visit, drop defaults.
+    try {
+      if (isCustomized) {
+        window.localStorage.setItem(SYSTEM_PROMPT_STORAGE_KEY, systemPrompt);
+      } else {
+        window.localStorage.removeItem(SYSTEM_PROMPT_STORAGE_KEY);
+      }
+    } catch {
+      /* storage unavailable — non-fatal */
+    }
+
     try {
       const report = await generateReport({
         my_context: slots.my_context,
         client_context: slots.client_context,
         transcript: slots.transcript,
+        model: selectedModel,
+        systemPrompt,
       });
       clearStageTimers();
       setResult(report);
@@ -153,10 +233,32 @@ export function ThreeDocUploader(): JSX.Element {
       setErrorMessage(message);
       setStep("error");
     }
-  }, [clearStageTimers, slots]);
+  }, [clearStageTimers, slots, selectedModel, systemPrompt, isCustomized]);
 
   return (
     <section className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <SettingsPanel
+          models={models}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          systemPrompt={systemPrompt}
+          onSystemPromptChange={setSystemPrompt}
+          onResetSystemPrompt={onResetSystemPrompt}
+          isCustomized={isCustomized}
+          disabled={isBusy}
+        />
+        {settingsError ? (
+          <p className="flex items-start gap-2 px-1 text-xs text-amber-300/80">
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              {settingsError} You can still generate a report — the server will
+              apply its defaults.
+            </span>
+          </p>
+        ) : null}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
         {SLOTS.map((slot) => (
           <UploadZone

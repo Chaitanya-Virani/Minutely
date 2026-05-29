@@ -17,6 +17,11 @@ export interface ReportResult {
   filename: string;
 }
 
+export interface GenerateReportRequest extends ReportFiles {
+  model: string;
+  systemPrompt: string;
+}
+
 const DEFAULT_FILENAME = "meeting-report.pdf";
 
 function parseFilenameFromDisposition(header: string | null): string {
@@ -42,11 +47,15 @@ function parseFilenameFromDisposition(header: string | null): string {
   return DEFAULT_FILENAME;
 }
 
-export async function generateReport(files: ReportFiles): Promise<ReportResult> {
+export async function generateReport(
+  req: GenerateReportRequest,
+): Promise<ReportResult> {
   const fd = new FormData();
-  fd.append("my_context", files.my_context);
-  fd.append("client_context", files.client_context);
-  fd.append("transcript", files.transcript);
+  fd.append("my_context", req.my_context);
+  fd.append("client_context", req.client_context);
+  fd.append("transcript", req.transcript);
+  fd.append("model", req.model);
+  fd.append("system_prompt", req.systemPrompt);
 
   const response = await fetch(`/api/generate-report`, {
     method: "POST",

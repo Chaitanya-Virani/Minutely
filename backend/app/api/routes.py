@@ -20,14 +20,21 @@ from pathlib import Path
 from typing import Final
 
 import anthropic
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 
 from app.config import Settings, get_settings
 from app.parsers import parse_file
 from app.report.extractor import extract_report
+from app.report.model_catalog import (
+    AVAILABLE_MODELS,
+    DEFAULT_MODEL_ID,
+    GenerationConfig,
+    resolve_model,
+)
 from app.report.pdf_builder import generate_pdf
+from app.report.prompt_builder import SYSTEM_INSTRUCTIONS
 from app.report.schemas import MeetingReport
 
 __all__ = ["router"]
@@ -157,6 +164,21 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@router.get("/config", tags=["meta"], response_model=GenerationConfig)
+async def get_config() -> GenerationConfig:
+    """Return the selectable models and default system prompt for the UI.
+
+    Built directly from the catalog constants so the model list is never
+    duplicated. The frontend reads this to populate the model selector and to
+    seed the editable system-prompt field.
+    """
+    return GenerationConfig(
+        models=AVAILABLE_MODELS,
+        default_model=DEFAULT_MODEL_ID,
+        default_system_prompt=SYSTEM_INSTRUCTIONS,
+    )
+
+
 @router.post(
     "/generate-report",
     tags=["report"],
@@ -183,6 +205,14 @@ async def generate_report(
     transcript: UploadFile = File(
         ...,
         description="Meeting transcript: .csv, .txt, .pdf, .docx, or .md.",
+    ),
+    model: str = Form(
+        default="",
+        description="Model ID to use. Empty falls back to the server default.",
+    ),
+    system_prompt: str = Form(
+        default="",
+        description="Optional system-prompt override. Empty uses the default.",
     ),
     settings: Settings = Depends(get_settings),
 ) -> StreamingResponse:
@@ -229,6 +259,22 @@ async def generate_report(
             detail=str(exc),
         ) from exc
 
+    # Resolve generation settings — bad model IDs are a client error.
+    try:
+        resolved_model = resolve_model(model)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    resolved_prompt = system_prompt.strip() or None
+
+    logger.info(
+        "generate-report :: model=%s custom_prompt=%s",
+        resolved_model,
+        resolved_prompt is not None,
+    )
+
     # Extract — funnel SDK errors to deterministic HTTP statuses.
     try:
         report: MeetingReport = await extract_report(
@@ -236,6 +282,8 @@ async def generate_report(
             client_context_text,
             transcript_text,
             speakers,
+            model=resolved_model,
+            system_instructions=resolved_prompt,
         )
     except ValueError as exc:
         # extractor's prompt builder may raise ValueError on bad inputs.

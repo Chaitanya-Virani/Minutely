@@ -21,6 +21,11 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: "http://localhost:8000"
+      # Server-side only: the Next.js proxy routes (/api/generate-report,
+      # /api/config) fetch the backend by this URL. Inside the compose network
+      # that must be the backend service name, not localhost (which would point
+      # at the frontend container itself).
+      BACKEND_URL: "http://backend:8000"
       PORT: "3000"
     depends_on:
       - backend

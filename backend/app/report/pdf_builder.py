@@ -291,10 +291,10 @@ def _badge(text: str, color: Any, styles: dict[str, ParagraphStyle]) -> Table:
     Returns a fixed-width ``Table`` so it can be embedded as a flowable
     inline next to a heading or inside another table cell.
     """
-    para = Paragraph(_escape(text.upper()), styles["badge"])
+    para = Paragraph(_escape(text), styles["badge"])
     tbl = Table(
         [[para]],
-        colWidths=[max(18 * mm, len(text) * 2.0 * mm)],
+        colWidths=[max(24 * mm, len(text) * 2.6 * mm)],
         rowHeights=[6.5 * mm],
         hAlign="LEFT",
     )
@@ -490,10 +490,10 @@ def _build_action_items(
         rows.append([task_para, assignee_para, due_para, priority_badge])
 
     col_widths = [
-        CONTENT_WIDTH * 0.50,
+        CONTENT_WIDTH * 0.45,
         CONTENT_WIDTH * 0.18,
         CONTENT_WIDTH * 0.15,
-        CONTENT_WIDTH * 0.17,
+        CONTENT_WIDTH * 0.22,
     ]
     tbl = Table(rows, colWidths=col_widths, hAlign="LEFT", repeatRows=1)
     tbl.setStyle(
@@ -543,8 +543,8 @@ def _build_key_dates(
 
     col_widths = [
         CONTENT_WIDTH * 0.22,
-        CONTENT_WIDTH * 0.55,
-        CONTENT_WIDTH * 0.23,
+        CONTENT_WIDTH * 0.53,
+        CONTENT_WIDTH * 0.25,
     ]
     tbl = Table(rows, colWidths=col_widths, hAlign="LEFT", repeatRows=1)
     tbl.setStyle(
@@ -570,12 +570,10 @@ def _build_key_dates(
 def _build_discussion_points(
     points: list[DiscussionPoint], styles: dict[str, ParagraphStyle]
 ) -> list[Any]:
-    story: list[Any] = [_section_heading("Discussion Points", styles)]
     if not points:
-        story.append(_muted_line("No discussion points captured.", styles))
-        story.append(Spacer(1, 6))
-        return story
+        return []
 
+    story: list[Any] = [_section_heading("Discussion Points", styles)]
     for point in points:
         inner: list[Any] = [
             Paragraph(_escape(point.topic), styles["card_title"]),
@@ -606,14 +604,10 @@ def _build_participant_summary(
     participants: dict[str, ParticipantSummary],
     styles: dict[str, ParagraphStyle],
 ) -> list[Any]:
-    story: list[Any] = [_section_heading("Per-Participant Tasks", styles)]
     if not participants:
-        story.append(
-            _muted_line("No per-participant breakdown available.", styles)
-        )
-        story.append(Spacer(1, 6))
-        return story
+        return []
 
+    story: list[Any] = [_section_heading("Per-Participant Tasks", styles)]
     for name, summary in participants.items():
         header_html = (
             f"<font name='Helvetica-Bold'>{_escape(name)}</font>"
@@ -641,11 +635,10 @@ def _build_participant_summary(
 def _build_risks(
     risks: list[str], styles: dict[str, ParagraphStyle]
 ) -> list[Any]:
-    story: list[Any] = [_section_heading("Risks and Blockers", styles)]
     if not risks:
-        story.append(_muted_line("No risks or blockers raised.", styles))
-        story.append(Spacer(1, 6))
-        return story
+        return []
+
+    story: list[Any] = [_section_heading("Risks and Blockers", styles)]
     story.extend(_bulleted_list(risks, styles))
     story.append(Spacer(1, 6))
     return story
@@ -654,11 +647,10 @@ def _build_risks(
 def _build_follow_ups(
     follow_ups: list[str], styles: dict[str, ParagraphStyle]
 ) -> list[Any]:
-    story: list[Any] = [_section_heading("Follow-Up Meetings", styles)]
     if not follow_ups:
-        story.append(_muted_line("No follow-up meetings scheduled.", styles))
-        story.append(Spacer(1, 6))
-        return story
+        return []
+
+    story: list[Any] = [_section_heading("Follow-Up Meetings", styles)]
     story.extend(_bulleted_list(follow_ups, styles))
     story.append(Spacer(1, 6))
     return story

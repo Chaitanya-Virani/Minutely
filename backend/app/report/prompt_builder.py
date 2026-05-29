@@ -69,6 +69,29 @@ EXTRACTION REQUIREMENTS
 - Follow-up meetings: every sync or follow-up that was proposed or
   scheduled, including timing when known.
 
+EXTRACTION COMPLETENESS (CRITICAL)
+- The risks array must be populated independently of the executive summary.
+  If a risk, competitive threat, external pressure, or unresolved dependency
+  is mentioned anywhere in the transcript — including casually, in passing,
+  or as background context — it belongs in the risks array as a structured
+  entry. The executive summary mentioning a risk does not satisfy this
+  requirement. A risk mentioned in prose and not in the array is a missing
+  extraction. Specific signals that must always produce a risks entry: a
+  named competitor being evaluated, a contract renewal under pressure, a
+  ticket SLA breach, a stakeholder expressing dissatisfaction, a deadline
+  that has already slipped, and any blocker that is not yet resolved at the
+  time of the meeting.
+- The follow_up_meetings array must capture every sync, review, or formal
+  meeting that was proposed or confirmed during the transcript — including
+  standing meetings, QBRs, checkpoint reviews, training sessions, and
+  executive alignment sessions. A meeting that appears in the key_dates
+  array is not exempt — if it was scheduled or proposed during the
+  transcript it must also appear in follow_up_meetings. The two arrays
+  serve different purposes: key_dates is a chronological timeline,
+  follow_up_meetings is the actionable list of things that need to be
+  booked or confirmed. Missing a follow-up that was verbally agreed in the
+  transcript is an extraction failure.
+
 ATTRIBUTION RULES
 - Always attribute statements to the speaker who actually made them; never
   fabricate quotes or assign actions to people who did not accept them.
@@ -86,7 +109,9 @@ TOOL CONTRACT
 """
 
 
-def build_system(my_context: str) -> list[dict[str, Any]]:
+def build_system(
+    my_context: str, *, system_instructions: str | None = None
+) -> list[dict[str, Any]]:
     """Build the `system` payload as a list of cached text content blocks.
 
     Two blocks rather than one so the cache survives changes to `my_context`
@@ -94,11 +119,20 @@ def build_system(my_context: str) -> list[dict[str, Any]]:
     boundaries are easy to inspect during debugging. Both blocks are marked
     `ephemeral` because the (instructions + my_context) pair is the most
     expensive and most frequently reused prefix across calls.
+
+    When `system_instructions` is provided and non-blank, it replaces the
+    default :data:`SYSTEM_INSTRUCTIONS` in the first block; otherwise the
+    default is used.
     """
+    instructions = (
+        system_instructions
+        if (system_instructions and system_instructions.strip())
+        else SYSTEM_INSTRUCTIONS
+    )
     return [
         {
             "type": "text",
-            "text": SYSTEM_INSTRUCTIONS,
+            "text": instructions,
             "cache_control": {"type": "ephemeral"},
         },
         {

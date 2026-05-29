@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 
 HEALTH_URL = "/api/v1/health"
+CONFIG_URL = "/api/v1/config"
 GENERATE_URL = "/api/v1/generate-report"
 
 
@@ -27,6 +28,25 @@ def test_health(client: TestClient) -> None:
     response = client.get(HEALTH_URL)
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# /config
+# ---------------------------------------------------------------------------
+
+
+def test_config(client: TestClient) -> None:
+    """``GET /config`` returns 3 models, the default, and a non-empty prompt."""
+    response = client.get(CONFIG_URL)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["models"]) == 3
+    assert body["default_model"] == "claude-sonnet-4-6"
+    assert isinstance(body["default_system_prompt"], str)
+    assert body["default_system_prompt"].strip()
+    # Each model entry has the frozen contract shape.
+    for option in body["models"]:
+        assert set(option) == {"id", "label", "description"}
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +96,77 @@ def test_generate_report_happy_path(
     assert len(positional) == 4
     # speakers list should reflect the txt parser output.
     assert positional[3] == ["Alice", "Bob"]
+
+
+# ---------------------------------------------------------------------------
+# /generate-report — model + system_prompt form fields
+# ---------------------------------------------------------------------------
+
+
+def _valid_files() -> dict[str, tuple[str, bytes, str]]:
+    """Return a valid three-file payload for the multipart POST."""
+    return {
+        "my_context": ("my.md", b"# My context\n\nI am the host.", "text/markdown"),
+        "client_context": (
+            "client.md",
+            b"# Client context\n\nClient is Acme Corp.",
+            "text/markdown",
+        ),
+        "transcript": ("chat.txt", b"Alice: hi\nBob: yo\n", "text/plain"),
+    }
+
+
+def test_generate_report_bad_model(
+    client: TestClient,
+    mock_extract_report: AsyncMock,
+) -> None:
+    """An unknown model is rejected with 400 and never reaches the extractor."""
+    response = client.post(
+        GENERATE_URL,
+        files=_valid_files(),
+        data={"model": "bogus-model"},
+    )
+
+    assert response.status_code == 400
+    assert "bogus-model" in response.json().get("detail", "")
+    assert mock_extract_report.await_count == 0
+
+
+def test_generate_report_whitespace_prompt_becomes_none(
+    client: TestClient,
+    mock_extract_report: AsyncMock,
+) -> None:
+    """A whitespace-only system_prompt is passed to the extractor as None."""
+    response = client.post(
+        GENERATE_URL,
+        files=_valid_files(),
+        data={"system_prompt": "   "},
+    )
+
+    assert response.status_code == 200
+    assert mock_extract_report.await_count == 1
+    assert mock_extract_report.await_args.kwargs["system_instructions"] is None
+
+
+def test_generate_report_passes_model_and_prompt(
+    client: TestClient,
+    mock_extract_report: AsyncMock,
+) -> None:
+    """A valid model + custom prompt are forwarded as extractor kwargs."""
+    response = client.post(
+        GENERATE_URL,
+        files=_valid_files(),
+        data={
+            "model": "claude-haiku-4-5-20251001",
+            "system_prompt": "Custom instructions",
+        },
+    )
+
+    assert response.status_code == 200
+    assert mock_extract_report.await_count == 1
+    kwargs = mock_extract_report.await_args.kwargs
+    assert kwargs["model"] == "claude-haiku-4-5-20251001"
+    assert kwargs["system_instructions"] == "Custom instructions"
 
 
 # ---------------------------------------------------------------------------

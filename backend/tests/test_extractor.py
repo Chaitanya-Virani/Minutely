@@ -143,6 +143,52 @@ async def test_extract_report_returns_meeting_report(
     assert mock_create.await_count == 1
 
 
+async def test_extract_report_threads_model_and_instructions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The model + custom instructions are passed through to messages.create."""
+    payload = _sample_report_dict()
+    mock_create = AsyncMock(return_value=_make_tool_use_response(payload))
+    monkeypatch.setattr(extractor._client.messages, "create", mock_create)
+
+    report = await extract_report(
+        my_context="my ctx",
+        client_context="client ctx",
+        transcript="t",
+        speakers=[],
+        model="claude-haiku-4-5-20251001",
+        system_instructions="CUSTOM INSTRUCTIONS ABC",
+    )
+
+    assert isinstance(report, MeetingReport)
+    assert mock_create.await_count == 1
+    call_kwargs = mock_create.await_args.kwargs
+    assert call_kwargs["model"] == "claude-haiku-4-5-20251001"
+
+    # The custom instructions must appear in one of the system text blocks.
+    system_text = " ".join(block["text"] for block in call_kwargs["system"])
+    assert "CUSTOM INSTRUCTIONS ABC" in system_text
+
+
+async def test_extract_report_defaults_model_to_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Omitting model falls back to settings.CLAUDE_MODEL."""
+    payload = _sample_report_dict()
+    mock_create = AsyncMock(return_value=_make_tool_use_response(payload))
+    monkeypatch.setattr(extractor._client.messages, "create", mock_create)
+
+    await extract_report(
+        my_context="my ctx",
+        client_context="client ctx",
+        transcript="t",
+        speakers=[],
+    )
+
+    call_kwargs = mock_create.await_args.kwargs
+    assert call_kwargs["model"] == extractor.settings.CLAUDE_MODEL
+
+
 async def test_extract_report_raises_when_no_tool_use(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

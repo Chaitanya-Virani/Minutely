@@ -1,3 +1,8 @@
+// IMPORTANT: This proxy MUST stay a raw multipart passthrough. The request body
+// is forwarded as an untouched ArrayBuffer with the original content-type so the
+// multipart boundary is preserved. Do NOT refactor this to parse/re-encode the
+// body as JSON or FormData — doing so would break multipart uploads (including
+// the `model` and `system_prompt` form fields).
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = (

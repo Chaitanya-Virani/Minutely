@@ -32,11 +32,18 @@ _client: AsyncAnthropic = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 
 _MAX_RETRIES: int = 3
-_MAX_TOKENS: int = 4096
+# A full report (outcomes, action items, key dates, discussion points,
+# per-participant summaries, risks, follow-ups) exceeds 4096 output tokens on
+# substantial meetings. At 4096 the tool_use JSON was truncated before the
+# trailing schema fields, which then silently defaulted to empty arrays
+# (notably risks_and_blockers and follow_up_meetings). 16000 leaves comfortable
+# headroom while staying well under the model's max output.
+_MAX_TOKENS: int = 16000
 
 
 async def _create_with_retry(
     *,
+    model: str,
     system: list[dict[str, Any]],
     messages: list[dict[str, Any]],
     tool_def: dict[str, Any],
@@ -52,7 +59,7 @@ async def _create_with_retry(
     for attempt in range(_MAX_RETRIES):
         try:
             return await _client.messages.create(
-                model=settings.CLAUDE_MODEL,
+                model=model,
                 max_tokens=_MAX_TOKENS,
                 system=system,
                 messages=messages,
@@ -116,8 +123,20 @@ async def extract_report(
     client_context: str,
     transcript: str,
     speakers: list[str],
+    *,
+    model: str | None = None,
+    system_instructions: str | None = None,
 ) -> MeetingReport:
     """Run a single Claude extraction and return a validated `MeetingReport`.
+
+    Parameters
+    ----------
+    model:
+        Anthropic model identifier to use for this call. Falls back to
+        ``settings.CLAUDE_MODEL`` when ``None``.
+    system_instructions:
+        Optional override for the default system instructions. When ``None`` or
+        blank, the built-in :data:`SYSTEM_INSTRUCTIONS` are used.
 
     Raises
     ------
@@ -130,7 +149,11 @@ async def extract_report(
     RuntimeError
         If Claude returned no `generate_report` tool_use block.
     """
-    system = build_system(my_context=my_context)
+    resolved_model = model or settings.CLAUDE_MODEL
+    system = build_system(
+        my_context=my_context,
+        system_instructions=system_instructions,
+    )
     messages = build_user_messages(
         client_context=client_context,
         transcript=transcript,
@@ -140,6 +163,7 @@ async def extract_report(
     tool_choice = get_tool_choice()
 
     response = await _create_with_retry(
+        model=resolved_model,
         system=system,
         messages=messages,
         tool_def=tool_def,
